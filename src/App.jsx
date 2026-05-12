@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useGoogleAuth } from "./useGoogleAuth.js";
 import { useGmailData } from "./useGmailData.js";
 import { useCalendarData } from "./useCalendarData.js";
+import { useGoogleDrive } from "./useGoogleDrive.js";
 import { GOOGLE_CLIENT_ID } from "./config.js";
 
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -70,10 +71,12 @@ export default function Dashboard() {
   const [editingDay, setEditingDay] = useState(null);
   const [newOneOff, setNewOneOff] = useState("");
   const [assigningOneOff, setAssigningOneOff] = useState(null);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   const { isSignedIn, isLoading: authLoading, signIn, signOut } = useGoogleAuth();
   const { emails, loading: emailLoading, error: emailError, refetch: refetchEmails } = useGmailData(isSignedIn);
   const { events, loading: calLoading, error: calError, refetch: refetchCal } = useCalendarData(isSignedIn);
+  const { saveData, loadData } = useGoogleDrive();
 
   useEffect(() => { saveToStorage("dark", dark); }, [dark]);
   useEffect(() => { saveToStorage("tabs", tabs); }, [tabs]);
@@ -84,19 +87,42 @@ export default function Dashboard() {
   useEffect(() => { saveToStorage("checked_" + new Date().toDateString(), checked); }, [checked]);
   useEffect(() => { const t = setInterval(() => setTime(new Date()), 60000); return () => clearInterval(t); }, []);
 
+  useEffect(() => {
+    if (isSignedIn) {
+      setSyncLoading(true);
+      loadData().then(result => {
+        if (result.success && result.data) {
+          setSchedule(result.data.schedule);
+          setOneOffs(result.data.oneOffs);
+          setChecked({});
+        }
+        setSyncLoading(false);
+      });
+    } else {
+      setChecked({});
+      localStorage.removeItem("checked_" + new Date().toDateString());
+    }
+  }, [isSignedIn, loadData]);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      const timer = setTimeout(() => saveData(schedule, oneOffs), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSignedIn, schedule, oneOffs, saveData]);
+
   const greeting = () => { const h = time.getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
   const fmtDate = d => d.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
 
   const TODAY_IDX = todayIdx();
   const todayTasks = schedule[DAYS[TODAY_IDX]] || [];
-  const todayOneOffs = oneOffs.filter(t => t.day === DAYS[TODAY_IDX] && !t.done);
-  const todayOneOffsDone = oneOffs.filter(t => t.day === DAYS[TODAY_IDX] && t.done);
+  const todayOneOffs = oneOffs.filter(t => t.day === DAYS[TODAY_IDX]);
 
   const emailDoneCount = emails.filter(e => checked[e.id]).length;
   const taskDoneCount = todayTasks.filter(t => checked[t.id]).length;
-  const oneOffDoneCount = todayOneOffsDone.length;
+  const oneOffDoneCount = todayOneOffs.filter(t => t.done).length;
   const totalDone = emailDoneCount + taskDoneCount + oneOffDoneCount;
-  const totalCount = emails.length + todayTasks.length + todayOneOffs.length + todayOneOffsDone.length;
+  const totalCount = emails.length + todayTasks.length + todayOneOffs.length;
   const progress = totalCount ? Math.round(totalDone / totalCount * 100) : 0;
 
   const addTask = (day) => {
@@ -135,7 +161,12 @@ export default function Dashboard() {
   };
 
   const addEventAsOneOff = (event) => {
-    setOneOffs(p => [...p, { id:"o"+Date.now(), label:`${event.title} (${event.time})`, day:DAYS[TODAY_IDX], done:false }]);
+    const exists = oneOffs.find(o => o.label.includes(event.title) && o.day === DAYS[TODAY_IDX]);
+    if (exists) {
+      setOneOffs(p => p.filter(o => o.id !== exists.id));
+    } else {
+      setOneOffs(p => [...p, { id:"o"+Date.now(), label:`${event.title} (${event.time})`, day:DAYS[TODAY_IDX], done:false }]);
+    }
   };
 
   const onTabDragStart = i => { tabDragIdx.current = i; };
@@ -178,9 +209,12 @@ export default function Dashboard() {
     focus: (
       <div style={card}>
         <div style={{ padding:"14px 16px", borderBottom:`1px solid ${T.border}` }}>
-          <span style={sectionLabel}>📋 Today's focus — {DAYS[TODAY_IDX]}</span>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:11 }}>
+            <span style={{ ...sectionLabel, marginBottom:0 }}>📋 Today's focus — {DAYS[TODAY_IDX]}</span>
+            {syncLoading && <span style={{ fontSize:9, color:T.textMuted, letterSpacing:"0.07em" }}>syncing…</span>}
+          </div>
           {todayTasks.length === 0 && todayOneOffs.length === 0 ? (
-            <div style={{ fontSize:12, color:T.textMuted, padding:"16px 0", textAlign:"center" }}>No tasks for today</div>
+            <div style={{ fontSize:12, color:T.textMuted, padding:"16px 0", textAlign:"center" }}>{syncLoading ? "Loading your tasks…" : "No tasks for today"}</div>
           ) : (
             <>
               {todayTasks.map(t => (
@@ -194,8 +228,10 @@ export default function Dashboard() {
               {todayOneOffs.length > 0 && todayTasks.length > 0 && <div style={{ height:1, background:T.border, margin:"10px 0" }} />}
               {todayOneOffs.map(t => (
                 <div key={t.id} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:8 }}>
-                  <div onClick={() => setOneOffs(p => p.map(o => o.id === t.id ? { ...o, done:true } : o))} style={{ width:18, height:18, borderRadius:4, flexShrink:0, cursor:"pointer", border:`1.5px solid ${T.textMuted}`, background:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }} title="Mark done" />
-                  <span style={{ fontSize:13, color:T.text, flex:1 }}>{t.label}</span>
+                  <div onClick={() => setOneOffs(p => p.map(o => o.id === t.id ? { ...o, done:!o.done } : o))} style={{ width:18, height:18, borderRadius:4, flexShrink:0, cursor:"pointer", border:`1.5px solid ${t.done?T.green:T.textMuted}`, background:t.done?T.green:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {t.done && <span style={{ color:"#fff", fontSize:10 }}>✓</span>}
+                  </div>
+                  <span style={{ fontSize:13, color:t.done?T.textMuted:T.text, textDecoration:t.done?"line-through":"none", flex:1 }}>{t.label}</span>
                   <span style={{ fontSize:8, color:T.accent, background:T.accentBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em" }}>ONE-OFF</span>
                 </div>
               ))}
@@ -204,7 +240,7 @@ export default function Dashboard() {
         </div>
         {totalCount > 0 && (
           <div style={{ padding:"9px 16px" }}>
-            <span style={{ fontSize:11, color:T.textSub }}>{taskDoneCount+oneOffDoneCount}/{todayTasks.length+todayOneOffs.length+todayOneOffsDone.length} tasks done{taskDoneCount+oneOffDoneCount === todayTasks.length+todayOneOffs.length+todayOneOffsDone.length && todayTasks.length+todayOneOffs.length+todayOneOffsDone.length > 0 ? " · 🔥" : ""}</span>
+            <span style={{ fontSize:11, color:T.textSub }}>{taskDoneCount+oneOffDoneCount}/{todayTasks.length+todayOneOffs.length} tasks done{taskDoneCount+oneOffDoneCount === todayTasks.length+todayOneOffs.length && todayTasks.length+todayOneOffs.length > 0 ? " · 🔥" : ""}</span>
           </div>
         )}
       </div>
@@ -280,16 +316,21 @@ export default function Dashboard() {
           ) : events.length === 0 ? (
             <div style={{ fontSize:11, color:T.textMuted, padding:"16px 0", textAlign:"center" }}>No events today</div>
           ) : (
-            events.map(ev => (
-              <div key={ev.id} style={{ display:"flex", gap:11, alignItems:"center", marginBottom:9 }}>
-                <div style={{ width:3, height:34, borderRadius:2, background:"#DB2777", flexShrink:0 }} />
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:13, color:T.text }}>{ev.title}</div>
-                  <div style={{ fontSize:11, color:T.textSub }}>{ev.time}</div>
+            events.map(ev => {
+              const eventAdded = oneOffs.some(o => o.label.includes(ev.title) && o.day === DAYS[TODAY_IDX]);
+              return (
+                <div key={ev.id} style={{ display:"flex", gap:11, alignItems:"center", marginBottom:9 }}>
+                  <div style={{ width:3, height:34, borderRadius:2, background:"#DB2777", flexShrink:0 }} />
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, color:T.text }}>{ev.title}</div>
+                    <div style={{ fontSize:11, color:T.textSub }}>{ev.time}</div>
+                  </div>
+                  <GhostBtn onClick={() => addEventAsOneOff(ev)} style={{ fontSize:9, padding:"4px 8px", color:eventAdded?T.green:T.textSub, borderColor:eventAdded?T.green:T.border }}>
+                    {eventAdded ? "✓ added" : "+ task"}
+                  </GhostBtn>
                 </div>
-                <GhostBtn onClick={() => addEventAsOneOff(ev)} style={{ fontSize:9, padding:"4px 8px" }}>+ task</GhostBtn>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -360,12 +401,10 @@ export default function Dashboard() {
                 onDragStart={() => onBriefDragStart(i)}
                 onDragOver={e => onBriefDragOver(e, i)}
                 onDragEnd={onBriefDragEnd}
-                style={{ cursor:"grab" }}
+                style={{ display:"flex", alignItems:"flex-start", gap:8, cursor:"grab" }}
               >
-                <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
-                  <DragHandle color={T.textMuted} />
-                  <div style={{ flex:1 }}>{BriefSections[section]}</div>
-                </div>
+                <DragHandle color={T.textMuted} />
+                <div style={{ flex:1 }}>{BriefSections[section]}</div>
               </div>
             ))}
           </div>
