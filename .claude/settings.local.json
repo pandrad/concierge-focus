@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import sys,json; lines=sys.stdin.read\\(\\).split\\('\\\\n'\\); [print\\(json.loads\\(l\\).get\\('message',{}\\).get\\('content',''\\)[:500] if isinstance\\(json.loads\\(l\\).get\\('message',{}\\).get\\('content',''\\),str\\) else ''\\) for l in lines if l and 'message' in json.loads\\(l\\)]\")",
+      "Bash(python3 -c ' *)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(gh --version)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
