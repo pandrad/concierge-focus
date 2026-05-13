@@ -27,7 +27,7 @@ export function useGmailData(isSignedIn) {
             userId: 'me',
             id: m.id,
             format: 'metadata',
-            metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Delivered-To'],
+            metadataHeaders: ['From', 'Subject', 'Date', 'To', 'Delivered-To', 'Message-ID', 'Reply-To'],
           })
         )
       );
@@ -42,8 +42,11 @@ export function useGmailData(isSignedIn) {
         const inbox = h['Delivered-To'] || h['To'] || '';
         return {
           id: r.result.id,
+          threadId: r.result.threadId,
+          messageId: h['Message-ID'] || '',
           from: fromName,
           email: fromEmail,
+          replyTo: h['Reply-To'] || fromEmail,
           subject: h['Subject'] || '(no subject)',
           preview: snippet,
           urgent: false,

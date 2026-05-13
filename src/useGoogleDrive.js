@@ -3,9 +3,9 @@ import { useCallback } from 'react';
 const FILE_NAME = 'concierge-focus-data.json';
 
 export function useGoogleDrive() {
-  const saveData = useCallback(async (schedule, oneOffs) => {
+  const saveData = useCallback(async (schedule, oneOffs, checked) => {
     try {
-      const data = { schedule, oneOffs, lastSaved: new Date().toISOString() };
+      const data = { schedule, oneOffs, checked, lastSaved: new Date().toISOString() };
       const content = JSON.stringify(data);
 
       const existingFile = await findFile();

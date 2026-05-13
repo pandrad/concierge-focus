@@ -64,7 +64,7 @@ export default function Dashboard() {
   const [oneOffs, setOneOffs] = useState(() => loadFromStorage("oneOffs", []));
   const [checked, setChecked] = useState(() => loadFromStorage("checked_" + new Date().toDateString(), {}));
 
-  const [briefOrder, setBriefOrder] = useState(() => loadFromStorage("briefOrder", ["focus","emails","calendar"]));
+  const [briefOrder, setBriefOrder] = useState(() => loadFromStorage("briefOrder", ["focus","backlog","stats","emails","calendar"]));
   const briefDragIdx = useRef(null);
 
   const [newTask, setNewTask] = useState("");
@@ -72,6 +72,14 @@ export default function Dashboard() {
   const [newOneOff, setNewOneOff] = useState("");
   const [assigningOneOff, setAssigningOneOff] = useState(null);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [dailyStats, setDailyStats] = useState(() => loadFromStorage("dailyStats", {}));
+  const [backlog, setBacklog] = useState(() => loadFromStorage("backlog", []));
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyInstructions, setReplyInstructions] = useState("");
+  const [replyDraft, setReplyDraft] = useState("");
+  const [replyBody, setReplyBody] = useState("");
+  const [suggestingReply, setSuggestingReply] = useState(false);
+  const [sendingReply, setSendingReply] = useState(false);
 
   const { isSignedIn, isLoading: authLoading, signIn, signOut } = useGoogleAuth();
   const { emails, loading: emailLoading, error: emailError, refetch: refetchEmails } = useGmailData(isSignedIn);
@@ -85,7 +93,34 @@ export default function Dashboard() {
   useEffect(() => { saveToStorage("schedule", schedule); }, [schedule]);
   useEffect(() => { saveToStorage("oneOffs", oneOffs); }, [oneOffs]);
   useEffect(() => { saveToStorage("checked_" + new Date().toDateString(), checked); }, [checked]);
+  useEffect(() => { saveToStorage("dailyStats", dailyStats); }, [dailyStats]);
+  useEffect(() => { saveToStorage("backlog", backlog); }, [backlog]);
   useEffect(() => { const t = setInterval(() => setTime(new Date()), 60000); return () => clearInterval(t); }, []);
+
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const lastOpen = loadFromStorage("lastOpenDate", null);
+    saveToStorage("lastOpenDate", today);
+    if (!lastOpen || lastOpen === today) return;
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    const yesterdayDayName = DAYS[yesterday.getDay() === 0 ? 6 : yesterday.getDay() - 1];
+    const yesterdayChecked = loadFromStorage("checked_" + yesterdayStr, {});
+    const yesterdayTasks = schedule[yesterdayDayName] || [];
+    const missed = yesterdayTasks.filter(t => !yesterdayChecked[t.id]);
+
+    if (missed.length > 0) {
+      setBacklog(prev => {
+        const existingIds = new Set(prev.map(b => b.id));
+        const newItems = missed
+          .filter(t => !existingIds.has(t.id))
+          .map(t => ({ id: t.id, label: t.label, fromDay: yesterdayDayName }));
+        return [...prev, ...newItems];
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -94,22 +129,23 @@ export default function Dashboard() {
         if (result.success && result.data) {
           setSchedule(result.data.schedule);
           setOneOffs(result.data.oneOffs);
-          setChecked({});
+          if (result.data.checked) setChecked(result.data.checked);
         }
         setSyncLoading(false);
       });
     } else {
       setChecked({});
-      localStorage.removeItem("checked_" + new Date().toDateString());
+      setSchedule({ Monday:[], Tuesday:[], Wednesday:[], Thursday:[], Friday:[], Saturday:[], Sunday:[] });
+      setOneOffs([]);
     }
   }, [isSignedIn, loadData]);
 
   useEffect(() => {
     if (isSignedIn) {
-      const timer = setTimeout(() => saveData(schedule, oneOffs), 1000);
+      const timer = setTimeout(() => saveData(schedule, oneOffs, checked), 1000);
       return () => clearTimeout(timer);
     }
-  }, [isSignedIn, schedule, oneOffs, saveData]);
+  }, [isSignedIn, schedule, oneOffs, checked, saveData]);
 
   const greeting = () => { const h = time.getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
   const fmtDate = d => d.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
@@ -124,6 +160,14 @@ export default function Dashboard() {
   const totalDone = emailDoneCount + taskDoneCount + oneOffDoneCount;
   const totalCount = emails.length + todayTasks.length + todayOneOffs.length;
   const progress = totalCount ? Math.round(totalDone / totalCount * 100) : 0;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const today = new Date().toDateString();
+    if (totalCount > 0 && !dailyStats[today]) {
+      setDailyStats(p => ({ ...p, [today]: { done: totalDone, total: totalCount } }));
+    }
+  }, [totalDone, totalCount]);
 
   const addTask = (day) => {
     if (!newTask.trim()) return;
@@ -169,6 +213,84 @@ export default function Dashboard() {
     }
   };
 
+  const openReply = async (email) => {
+    setReplyingTo(email);
+    setReplyInstructions("");
+    setReplyDraft("");
+    setReplyBody("");
+    try {
+      const res = await window.gapi.client.gmail.users.messages.get({
+        userId: "me", id: email.id, format: "full",
+      });
+      const extractText = (payload) => {
+        if (!payload) return "";
+        if (payload.mimeType === "text/plain" && payload.body?.data)
+          return atob(payload.body.data.replace(/-/g, "+").replace(/_/g, "/"));
+        for (const part of payload.parts || []) {
+          const text = extractText(part);
+          if (text) return text;
+        }
+        return "";
+      };
+      setReplyBody(extractText(res.result.payload).slice(0, 2000));
+    } catch {}
+  };
+
+  const suggestReply = async () => {
+    if (!replyInstructions.trim()) return;
+    setSuggestingReply(true);
+    try {
+      const res = await fetch("/api/suggest-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emailFrom: replyingTo.from,
+          emailSubject: replyingTo.subject,
+          emailBody: replyBody,
+          instructions: replyInstructions,
+        }),
+      });
+      const data = await res.json();
+      if (data.reply) setReplyDraft(data.reply);
+    } catch (err) {
+      console.error("Suggest failed:", err);
+    }
+    setSuggestingReply(false);
+  };
+
+  const sendReply = async () => {
+    if (!replyingTo || !replyDraft.trim()) return;
+    setSendingReply(true);
+    try {
+      const to = replyingTo.replyTo || replyingTo.email;
+      const subject = replyingTo.subject.startsWith("Re:") ? replyingTo.subject : `Re: ${replyingTo.subject}`;
+      const mime = [
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        `In-Reply-To: ${replyingTo.messageId || ""}`,
+        `References: ${replyingTo.messageId || ""}`,
+        `Content-Type: text/plain; charset=utf-8`,
+        ``,
+        replyDraft,
+      ].join("\r\n");
+
+      const encoded = btoa(unescape(encodeURIComponent(mime)))
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+      await window.gapi.client.gmail.users.messages.send({
+        userId: "me",
+        resource: { raw: encoded, threadId: replyingTo.threadId },
+      });
+
+      setChecked(p => ({ ...p, [replyingTo.id]: true }));
+      setReplyingTo(null);
+    } catch (err) {
+      console.error("Send failed:", err);
+      alert("Failed to send. Please try again.");
+    }
+    setSendingReply(false);
+  };
+
   const onTabDragStart = i => { tabDragIdx.current = i; };
   const onTabDragOver = (e, i) => {
     e.preventDefault();
@@ -205,7 +327,65 @@ export default function Dashboard() {
     <div style={{ textAlign:"center", padding:"16px 0", fontSize:11, color:T.textMuted }}>Loading…</div>
   );
 
+  const getWeeklyData = () => {
+    const week = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toDateString();
+      const stats = dailyStats[dateStr];
+      const percent = stats && stats.total > 0 ? Math.round(stats.done / stats.total * 100) : 0;
+      const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+      week.push({ dateStr, dayName, percent, stats });
+    }
+    return week;
+  };
+
   const BriefSections = {
+    backlog: backlog.length === 0 ? null : (
+      <div style={card}>
+        <div style={{ padding:"14px 16px" }}>
+          <span style={{ ...sectionLabel, color:T.urgent }}>⚠️ Not done yesterday · {backlog.length} task{backlog.length !== 1 ? "s" : ""}</span>
+          {backlog.map(t => (
+            <div key={t.id} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:8 }}>
+              <span style={{ fontSize:11, color:T.textMuted, flexShrink:0 }}>{t.fromDay.slice(0,3)}</span>
+              <span style={{ fontSize:13, color:T.text, flex:1 }}>{t.label}</span>
+              <button
+                onClick={() => {
+                  setOneOffs(p => [...p, { id:"o"+Date.now(), label:t.label, day:null, done:false }]);
+                  setBacklog(p => p.filter(b => b.id !== t.id));
+                }}
+                style={{ fontSize:9, padding:"3px 8px", borderRadius:5, border:`1px solid ${T.accentBorder}`, background:T.accentBg, color:T.accent, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}
+              >+ one-off</button>
+              <button
+                onClick={() => setBacklog(p => p.filter(b => b.id !== t.id))}
+                style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:13, cursor:"pointer", padding:"0 2px" }}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+
+    stats: (
+      <div style={card}>
+        <div style={{ padding:"14px 16px" }}>
+          <span style={sectionLabel}>📊 Last 7 days</span>
+          <div style={{ display:"flex", gap:8, alignItems:"flex-end", height:80, justifyContent:"space-around" }}>
+            {getWeeklyData().map((day, i) => (
+              <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:6, flex:1 }}>
+                <div style={{ width:"100%", background:T.surface2, borderRadius:4, height:60, position:"relative", overflow:"hidden", display:"flex", alignItems:"flex-end" }}>
+                  <div style={{ width:"100%", height:`${day.percent}%`, background:T.accent, transition:"height 0.3s", borderRadius:2 }} />
+                </div>
+                <div style={{ fontSize:9, color:T.textSub, fontWeight:600 }}>{day.percent}%</div>
+                <div style={{ fontSize:8, color:T.textMuted }}>{day.dayName}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    ),
+
     focus: (
       <div style={card}>
         <div style={{ padding:"14px 16px", borderBottom:`1px solid ${T.border}` }}>
@@ -286,7 +466,12 @@ export default function Dashboard() {
                   <div style={{ fontSize:11, color:T.textMuted, marginTop:1, opacity:checked[e.id]?0.6:1 }}>{e.preview.slice(0, 70)}…</div>
                   <div style={{ fontSize:9, color:T.textMuted, marginTop:2, opacity:checked[e.id]?0.6:1 }}>To: {e.inbox}</div>
                 </div>
-                <span style={{ fontSize:9, color:T.textMuted, flexShrink:0 }}>{e.date}</span>
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
+                  <span style={{ fontSize:9, color:T.textMuted }}>{e.date}</span>
+                  {!checked[e.id] && (
+                    <button onClick={() => openReply(e)} style={{ fontSize:9, padding:"2px 7px", borderRadius:4, border:`1px solid ${T.border}`, background:"transparent", color:T.blue, cursor:"pointer", fontFamily:"inherit" }}>↩ reply</button>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -394,7 +579,7 @@ export default function Dashboard() {
         {activeTab === "brief" && (
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             <div style={{ fontSize:9, color:T.textMuted, letterSpacing:"0.07em", marginBottom:-4 }}>drag sections to reorder ⠿</div>
-            {briefOrder.map((section, i) => (
+            {briefOrder.filter(s => BriefSections[s]).map((section, i) => (
               <div
                 key={section}
                 draggable
@@ -487,6 +672,66 @@ export default function Dashboard() {
           <span style={{ fontSize:9, color:T.border }}>Gmail + Calendar · live data</span>
         </div>
       </div>
+
+      {replyingTo && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:100, padding:16 }}>
+          <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:14, width:"100%", maxWidth:680, maxHeight:"85vh", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:"16px 20px 12px", borderBottom:`1px solid ${T.border}`, display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+              <div>
+                <div style={{ fontSize:9, color:T.textMuted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:3 }}>Reply to</div>
+                <div style={{ fontSize:13, color:T.text, fontWeight:600 }}>{replyingTo.from} <span style={{ fontWeight:400, color:T.textMuted, fontSize:11 }}>&lt;{replyingTo.email}&gt;</span></div>
+                <div style={{ fontSize:11, color:T.textSub, marginTop:2 }}>{replyingTo.subject}</div>
+              </div>
+              <button onClick={() => setReplyingTo(null)} style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:20, cursor:"pointer", lineHeight:1, padding:"0 4px" }}>×</button>
+            </div>
+
+            <div style={{ overflowY:"auto", flex:1, padding:"14px 20px", display:"flex", flexDirection:"column", gap:14 }}>
+              {replyBody && (
+                <div style={{ background:T.surface2, borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:9, color:T.textMuted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:6 }}>Original message</div>
+                  <div style={{ fontSize:12, color:T.textSub, whiteSpace:"pre-wrap", maxHeight:140, overflowY:"auto" }}>{replyBody}</div>
+                </div>
+              )}
+
+              <div>
+                <div style={{ fontSize:9, color:T.textMuted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:6 }}>What do you want to say?</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input
+                    autoFocus
+                    value={replyInstructions}
+                    onChange={e => setReplyInstructions(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && suggestReply()}
+                    placeholder="e.g. Tell them I'm available next week, keep it brief"
+                    style={{ flex:1, background:T.surface2, border:`1px solid ${T.border}`, borderRadius:8, padding:"9px 12px", color:T.text, fontSize:12, fontFamily:"inherit", outline:"none" }}
+                  />
+                  <PrimaryBtn onClick={suggestReply} disabled={suggestingReply || !replyInstructions.trim()} style={{ whiteSpace:"nowrap" }}>
+                    {suggestingReply ? "Thinking…" : "Suggest draft"}
+                  </PrimaryBtn>
+                </div>
+              </div>
+
+              {replyDraft && (
+                <div>
+                  <div style={{ fontSize:9, color:T.textMuted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:6 }}>Draft — edit if needed</div>
+                  <textarea
+                    value={replyDraft}
+                    onChange={e => setReplyDraft(e.target.value)}
+                    rows={7}
+                    style={{ width:"100%", boxSizing:"border-box", background:T.surface2, border:`1px solid ${T.accentBorder}`, borderRadius:8, padding:"10px 12px", color:T.text, fontSize:13, fontFamily:"inherit", outline:"none", resize:"vertical" }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding:"12px 20px", borderTop:`1px solid ${T.border}`, display:"flex", justifyContent:"flex-end", gap:8 }}>
+              <GhostBtn onClick={() => setReplyingTo(null)}>Cancel</GhostBtn>
+              <PrimaryBtn onClick={sendReply} disabled={!replyDraft.trim() || sendingReply}>
+                {sendingReply ? "Sending…" : "Send reply"}
+              </PrimaryBtn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
