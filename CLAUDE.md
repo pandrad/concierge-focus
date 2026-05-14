@@ -46,23 +46,23 @@ Personal productivity dashboard synced to Google account. React + Vite SPA deplo
 ### Brief Tab (Dashboard)
 - **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion
 - **Last 7 Days** — Bar chart showing daily completion percentages
-- **Needs Reply** — Unread emails, marked as handled when checked
-- **Today's Events** — Calendar events, convertible to one-off tasks with toggle
+- **Needs Reply** — Unread emails (last 7 days), marked as handled when checked. Emails can be ignored for the day or blocked permanently (with confirmation modal, no undo)
+- **Today's Events** — Calendar events, convertible to one-off tasks with toggle (shows ✓ added, click again to remove)
 - All sections draggable to reorder
+- Logged-in Google account shown in header
 
 ### Week Tab
 - Per-day task scheduler (Monday–Sunday)
 - Add/delete/move tasks between days
-- One-off assignment modal
 
 ### One-offs Tab
 - Create standalone tasks
 - Assign to specific days
-- Mark complete (hides from One-offs tab, shows crossed out in Today's Focus)
+- Mark complete (hides from One-offs tab, shows crossed out in Today's Focus; uncheck to restore)
 
 ### Persistence
-- **Local:** localStorage for UI state (dark mode, tab names, brief order)
-- **Cloud:** Google Drive appData for schedule + one-offs (auto-synced)
+- **Local:** localStorage for UI state (dark mode, tab names, brief order, daily stats)
+- **Cloud:** Google Drive appData — schedule, oneOffs, checked, ignored, permanentlyIgnored (auto-synced, restored on login)
 - **Daily:** Completion stats tracked in localStorage, visible in weekly chart
 
 ## Google APIs Setup
@@ -115,14 +115,22 @@ npm run dev
 - Easy to refactor—can find references with grep
 
 ### Why separate `checked` and `done` fields?
-- `checked` (daily) — UI state for highlighting completed items
+- `checked` (daily) — UI state for highlighting completed items, also used for emails
 - `done` (persistent) — One-off completion status that persists across days
 - Allows completed one-offs to stay visible (crossed out) in Today's Focus
 
+### Email ignore vs block
+- `ignored` — keyed by date in localStorage + Drive, resets each day, email grays out but stays visible
+- `permanentlyIgnored` — array of email IDs in Drive, email never shown again, no undo (confirmation modal before applying)
+
 ### Logout Behavior
-- When user signs out, `schedule` + `oneOffs` are cleared to {}
-- Prevents next user from seeing previous user's tasks
+- On sign-out: `schedule`, `oneOffs`, `checked`, `ignored` all cleared from React state
+- `permanentlyIgnored` is restored from Drive on next login (it's account-level, not session-level)
 - ~1 second delay when new user signs in (Drive API latency)
+
+### Email fetching
+- Gmail API fetches unread inbox emails from last 7 days (`is:unread in:inbox after:YYYY/MM/DD`)
+- `userEmail` fetched via `gmail.users.getProfile` and shown in header
 
 ## Next Features (Planned)
 

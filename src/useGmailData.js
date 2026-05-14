@@ -1,23 +1,35 @@
 import { useState, useEffect } from 'react';
 
-export function useGmailData(isSignedIn) {
+export function useGmailData(isSignedIn, filter = 'week') {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
-    if (!isSignedIn) { setEmails([]); setError(null); return; }
-    fetchEmails();
-  }, [isSignedIn]);
+    if (!isSignedIn) { setEmails([]); setError(null); setUserEmail(''); return; }
+    fetchEmails(filter);
+  }, [isSignedIn, filter]);
 
-  async function fetchEmails() {
+  async function fetchEmails(currentFilter) {
     setLoading(true);
     setError(null);
     try {
+      const profile = await window.gapi.client.gmail.users.getProfile({ userId: 'me' });
+      setUserEmail(profile.result.emailAddress || '');
+
+      let q = 'is:unread in:inbox';
+      if (currentFilter === 'week') {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        const after = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+        q += ` after:${after}`;
+      }
+
       const listRes = await window.gapi.client.gmail.users.messages.list({
         userId: 'me',
-        q: 'is:unread in:inbox',
-        maxResults: 10,
+        q,
+        maxResults: 20,
       });
 
       const messages = listRes.result.messages || [];
@@ -38,8 +50,6 @@ export function useGmailData(isSignedIn) {
         const fromRaw = h['From'] || '';
         const fromName = fromRaw.replace(/<[^>]+>/, '').trim().replace(/^"(.+)"$/, '$1') || fromRaw;
         const fromEmail = (fromRaw.match(/<([^>]+)>/) || [])[1] || fromRaw;
-        const snippet = r.result.snippet || '';
-        const inbox = h['Delivered-To'] || h['To'] || '';
         return {
           id: r.result.id,
           threadId: r.result.threadId,
@@ -48,10 +58,9 @@ export function useGmailData(isSignedIn) {
           email: fromEmail,
           replyTo: h['Reply-To'] || fromEmail,
           subject: h['Subject'] || '(no subject)',
-          preview: snippet,
+          preview: r.result.snippet || '',
           urgent: false,
           date: formatDate(h['Date']),
-          inbox,
         };
       });
 
@@ -64,7 +73,7 @@ export function useGmailData(isSignedIn) {
     }
   }
 
-  return { emails, loading, error, refetch: fetchEmails };
+  return { emails, userEmail, loading, error, refetch: () => fetchEmails(filter) };
 }
 
 function formatDate(raw) {
@@ -72,8 +81,7 @@ function formatDate(raw) {
   const d = new Date(raw);
   if (isNaN(d)) return raw;
   const now = new Date();
-  if (d.toDateString() === now.toDateString()) {
+  if (d.toDateString() === now.toDateString())
     return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  }
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
