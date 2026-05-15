@@ -88,6 +88,14 @@ cp .env.example .env.local
 npm run dev
 ```
 
+### Local Dev Server (macOS LaunchAgent)
+The dev server runs automatically on login via a macOS LaunchAgent. No manual `npm run dev` needed.
+
+- **Plist:** `~/Library/LaunchAgents/com.pedroandrade.concierge-focus.plist`
+- **Logs:** `/tmp/concierge-focus.log` / `/tmp/concierge-focus.error.log`
+- Stop: `launchctl unload ~/Library/LaunchAgents/com.pedroandrade.concierge-focus.plist`
+- Start: `launchctl load ~/Library/LaunchAgents/com.pedroandrade.concierge-focus.plist`
+
 ### Git Workflow
 - Feature branches not required for small features
 - Commit directly to main when testing locally
