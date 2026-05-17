@@ -16,11 +16,34 @@ export function useGoogleAuth() {
         if (token.expiry > Date.now()) {
           window.gapi.client.setToken(token);
           setIsSignedIn(true);
+          setIsLoading(false);
         } else {
           localStorage.removeItem('gapi_token');
+          // Token expired — try silent refresh once google.accounts is ready
+          const tryRefresh = () => {
+            if (!window.google || !GOOGLE_CLIENT_ID) { setIsLoading(false); return; }
+            const client = window.google.accounts.oauth2.initTokenClient({
+              client_id: GOOGLE_CLIENT_ID,
+              scope: SCOPES,
+              prompt: '',
+              callback: (response) => {
+                if (response.error) { setIsLoading(false); return; }
+                const expiry = Date.now() + response.expires_in * 1000;
+                const refreshed = { ...response, expiry };
+                localStorage.setItem('gapi_token', JSON.stringify(refreshed));
+                window.gapi.client.setToken(refreshed);
+                setIsSignedIn(true);
+                setIsLoading(false);
+              },
+            });
+            client.requestAccessToken({ prompt: 'none' });
+          };
+          // Give google.accounts a moment to initialise if not yet ready
+          if (window.google) { tryRefresh(); } else { setTimeout(tryRefresh, 500); }
         }
+      } else {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     if (window.google && GOOGLE_CLIENT_ID) {
@@ -40,26 +63,24 @@ export function useGoogleAuth() {
     }
   }, []);
 
-  // Auto sign-out when access token expires (~1 hour)
+  // Silently refresh the access token before it expires (~1 hour lifetime)
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (!isSignedIn || !tokenClient) return;
     const stored = localStorage.getItem('gapi_token');
     if (!stored) return;
     const token = JSON.parse(stored);
     const remaining = token.expiry - Date.now();
     if (remaining <= 0) {
-      localStorage.removeItem('gapi_token');
-      window.gapi.client.setToken('');
-      setIsSignedIn(false);
+      tokenClient.requestAccessToken({ prompt: 'none' });
       return;
     }
+    // Refresh 5 minutes before expiry
+    const refreshIn = Math.max(remaining - 5 * 60 * 1000, 0);
     const timer = setTimeout(() => {
-      localStorage.removeItem('gapi_token');
-      window.gapi.client.setToken('');
-      setIsSignedIn(false);
-    }, remaining);
+      tokenClient.requestAccessToken({ prompt: 'none' });
+    }, refreshIn);
     return () => clearTimeout(timer);
-  }, [isSignedIn]);
+  }, [isSignedIn, tokenClient]);
 
   const signIn = useCallback(() => {
     if (tokenClient) {
