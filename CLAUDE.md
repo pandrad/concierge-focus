@@ -13,11 +13,37 @@ Personal productivity dashboard synced to Google account. React + Vite SPA deplo
 
 ## Architecture
 
+### Directory Structure
+```
+src/
+├── App.jsx                  ← thin orchestrator (~80 lines)
+├── theme.js                 ← LIGHT/DARK color tokens
+├── services/                ← Google API integrations
+│   ├── config.js
+│   ├── useGoogleAuth.js
+│   ├── useGmailData.js
+│   ├── useCalendarData.js
+│   └── useGoogleDrive.js
+├── hooks/
+│   └── useAppState.js       ← all business logic & state management
+├── components/              ← reusable UI primitives
+│   ├── Buttons.jsx          ← PrimaryBtn, GhostBtn
+│   ├── DragHandle.jsx
+│   ├── Spinner.jsx
+│   ├── NoCredentialsWarning.jsx
+│   └── index.js
+└── views/                   ← one file per tab
+    ├── BriefView.jsx
+    ├── WeekView.jsx
+    └── OneOffsView.jsx
+```
+
 ### Data Flow
-1. **Authentication** → `useGoogleAuth.js` — OAuth2 token flow via Google accounts API
-2. **Data Loading** → `useGmailData.js`, `useCalendarData.js` — Fetch via Google APIs
-3. **Data Persistence** → `useGoogleDrive.js` — Save/load schedule + one-offs to Drive
-4. **UI State** → App.jsx — React state for UI (tabs, checked tasks, editing modes)
+1. **Authentication** → `services/useGoogleAuth.js` — OAuth2 token flow via Google accounts API, with silent refresh on expiry
+2. **Data Loading** → `services/useGmailData.js`, `services/useCalendarData.js` — Fetch via Google APIs
+3. **Data Persistence** → `services/useGoogleDrive.js` — Save/load schedule + one-offs to Drive
+4. **Business Logic & State** → `hooks/useAppState.js` — all task/email/backlog state and actions
+5. **UI** → `views/` + `components/` — purely presentational, receive state and callbacks as props
 
 ### Key Data Structures
 
@@ -116,6 +142,12 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 - Keeps data synced across devices/browsers
 - No backend needed; leverages existing Google auth
 - Trade-off: ~1 second delay when loading after sign-in
+
+### Why separation of concerns (services / hooks / views)?
+- `services/` — swap or mock Google APIs without touching UI
+- `hooks/useAppState.js` — business logic testable independently of rendering
+- `views/` + `components/` — replace the entire UI without touching data layer
+- To change the UI: only edit `views/`, `components/`, and `theme.js`
 
 ### Why vanilla CSS-in-JS?
 - No build-time dependencies
