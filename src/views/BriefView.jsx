@@ -9,7 +9,7 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
     backlog, syncLoading, dailyStats, setDailyStats,
     briefOrder,
     onBriefDragStart, onBriefDragOver, onBriefDragEnd,
-    toggleOneOff, addEventAsOneOff, addEmailAsOneOff, toggleIgnored, confirmBlockEmail,
+    toggleOneOff, deleteOneOff, addEventAsOneOff, addEmailAsOneOff, toggleIgnored, confirmBlockEmail,
     promoteBacklogToOneOff, dismissBacklog,
     confirmBlock, cancelBlock, applyBlock,
   } = state;
@@ -108,8 +108,9 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
                   <div onClick={() => toggleOneOff(t.id)} style={{ width:18, height:18, borderRadius:4, flexShrink:0, cursor:"pointer", border:`1.5px solid ${t.done?T.green:T.textMuted}`, background:t.done?T.green:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     {t.done && <span style={{ color:"#fff", fontSize:10 }}>✓</span>}
                   </div>
-                  <span style={{ fontSize:13, color:t.done?T.textMuted:T.text, textDecoration:t.done?"line-through":"none", flex:1 }}>{t.label}</span>
-                  <span style={{ fontSize:8, color:T.accent, background:T.accentBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em" }}>ONE-OFF</span>
+                  <span style={{ fontSize:13, color:t.done?T.textMuted:T.text, textDecoration:t.done?"line-through":"none", flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.label}</span>
+                  <span style={{ fontSize:8, color:T.accent, background:T.accentBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em", flexShrink:0 }}>ONE-OFF</span>
+                  <button onClick={() => deleteOneOff(t.id)} style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:13, cursor:"pointer", padding:"0 2px", flexShrink:0 }}>×</button>
                 </div>
               ))}
             </>
