@@ -70,12 +70,13 @@ src/
 ## Features
 
 ### Brief Tab (Dashboard)
-- **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion
-- **Last 7 Days** — Bar chart showing daily completion percentages
-- **Needs Reply** — Unread emails (last 7 days), marked as handled when checked. Emails can be ignored for the day or blocked permanently (with confirmation modal, no undo)
+- **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion; one-offs can be deleted directly from this view
+- **Last 7 Days** — Bar chart showing daily task completion percentages (emails excluded from progress)
+- **Needs Reply** — Unread emails (last 7 days); `+ task` button adds a `Reply: from — subject` one-off for today (toggle to remove); emails can be ignored for the day (grayed out, restorable) or blocked permanently (confirmation modal, no undo)
 - **Today's Events** — Calendar events, convertible to one-off tasks with toggle (shows ✓ added, click again to remove)
 - All sections draggable to reorder
 - Logged-in Google account shown in header
+- Progress % in header reflects tasks + one-offs only (not emails)
 
 ### Week Tab
 - Per-day task scheduler (Monday–Sunday)
@@ -83,8 +84,8 @@ src/
 
 ### One-offs Tab
 - Create standalone tasks
-- Assign to specific days
-- Mark complete (hides from One-offs tab, shows crossed out in Today's Focus; uncheck to restore)
+- Assign to specific days; long labels truncate with ellipsis, action buttons always visible
+- Mark complete (hides from One-offs tab, shows crossed out in Today's Focus; click again to restore)
 
 ### Persistence
 - **Local:** localStorage for UI state (dark mode, tab names, brief order, daily stats)
@@ -155,13 +156,15 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 - Easy to refactor—can find references with grep
 
 ### Why separate `checked` and `done` fields?
-- `checked` (daily) — UI state for highlighting completed items, also used for emails
+- `checked` (daily) — UI state for task checkbox completion, resets each day
 - `done` (persistent) — One-off completion status that persists across days
 - Allows completed one-offs to stay visible (crossed out) in Today's Focus
 
 ### Email ignore vs block
-- `ignored` — keyed by date in localStorage + Drive, resets each day, email grays out but stays visible
+- `ignored` — keyed by date in localStorage + Drive, resets each day, email grays out at 40% opacity with "unignore" button
 - `permanentlyIgnored` — array of email IDs in Drive, email never shown again, no undo (confirmation modal before applying)
+- `visibleEmails` — emails minus permanentlyIgnored (rendered in list)
+- `activeEmails` — emails minus both ignored and permanentlyIgnored (used for header count)
 
 ### Logout Behavior
 - On sign-out: `schedule`, `oneOffs`, `checked`, `ignored` all cleared from React state
