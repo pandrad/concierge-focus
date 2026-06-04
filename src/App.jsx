@@ -3,7 +3,7 @@ import { useGoogleAuth } from "./services/useGoogleAuth.js";
 import { useGmailData } from "./services/useGmailData.js";
 import { useCalendarData } from "./services/useCalendarData.js";
 import { LIGHT, DARK } from "./theme.js";
-import { useAppState, loadFromStorage, saveToStorage } from "./hooks/useAppState.js";
+import { useAppState, loadFromStorage, saveToStorage, DAYS, todayIdx } from "./hooks/useAppState.js";
 import { BriefView } from "./views/BriefView.jsx";
 import { WeekView } from "./views/WeekView.jsx";
 import { OneOffsView } from "./views/OneOffsView.jsx";
@@ -27,8 +27,9 @@ export default function App() {
   const fmtDate = d => d.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
 
   const { checked, oneOffs, schedule } = state;
-  const todayTasks = schedule[["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][(new Date().getDay()||7)-1]] || [];
-  const todayOneOffs = oneOffs.filter(t => t.day === ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][(new Date().getDay()||7)-1]);
+  const TODAY = DAYS[todayIdx()];
+  const todayTasks = schedule[TODAY] || [];
+  const todayOneOffs = oneOffs.filter(t => t.day === TODAY);
   const totalDone = todayTasks.filter(t => checked[t.id]).length + todayOneOffs.filter(t => t.done).length;
   const totalCount = todayTasks.length + todayOneOffs.length;
   const progress = totalCount ? Math.round(totalDone / totalCount * 100) : 0;

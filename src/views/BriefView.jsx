@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { DragHandle, PrimaryBtn, GhostBtn, Spinner, NoCredentialsWarning } from '../components/index.js';
 import { DAYS, todayIdx } from '../hooks/useAppState.js';
 import { GOOGLE_CLIENT_ID } from '../services/config.js';
@@ -18,7 +19,8 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
   const TODAY = DAYS[TODAY_IDX];
   const todayTasks = schedule[TODAY] || [];
   const todayOneOffs = oneOffs.filter(t => t.day === TODAY);
-  const activeEmails = emails.filter(e => !ignored[e.id] && !permanentlyIgnored.includes(e.id));
+  const visibleEmails = emails.filter(e => !permanentlyIgnored.includes(e.id));
+  const activeEmails = visibleEmails.filter(e => !ignored[e.id]);
   const taskDoneCount = todayTasks.filter(t => checked[t.id]).length;
   const oneOffDoneCount = todayOneOffs.filter(t => t.done).length;
   const totalDone = taskDoneCount + oneOffDoneCount;
@@ -43,9 +45,11 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
 
   // Track today's stats when totals are first available
   const today = new Date().toDateString();
-  if (totalCount > 0 && !dailyStats[today]) {
-    setDailyStats(p => ({ ...p, [today]: { done: totalDone, total: totalCount } }));
-  }
+  useEffect(() => {
+    if (totalCount > 0 && !dailyStats[today]) {
+      setDailyStats(p => ({ ...p, [today]: { done: totalDone, total: totalCount } }));
+    }
+  }, [totalDone, totalCount]);
 
   const sections = {
     backlog: backlog.length === 0 ? null : (

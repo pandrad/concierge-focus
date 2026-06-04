@@ -2,7 +2,7 @@ import { PrimaryBtn, GhostBtn } from '../components/index.js';
 import { DAYS, todayIdx } from '../hooks/useAppState.js';
 
 export function WeekView({ T, state }) {
-  const { schedule, checked, newTask, setNewTask, editingDay, setEditingDay, addTask, deleteTask, moveTask } = state;
+  const { schedule, newTask, setNewTask, editingDay, setEditingDay, addTask, deleteTask, moveTask } = state;
   const TODAY_IDX = todayIdx();
   const card = { borderRadius:11, background:T.surface, border:`1px solid ${T.border}`, overflow:"hidden" };
 

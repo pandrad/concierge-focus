@@ -2,7 +2,7 @@ import { PrimaryBtn, GhostBtn } from '../components/index.js';
 import { DAYS, todayIdx } from '../hooks/useAppState.js';
 
 export function OneOffsView({ T, state }) {
-  const { oneOffs, newOneOff, setNewOneOff, addOneOff, deleteOneOff, assignOneOffDay, setOneOffs, assigningOneOff, setAssigningOneOff } = state;
+  const { oneOffs, newOneOff, setNewOneOff, addOneOff, deleteOneOff, assignOneOffDay, toggleOneOff, assigningOneOff, setAssigningOneOff } = state;
   const TODAY_IDX = todayIdx();
   const card = { borderRadius:11, background:T.surface, border:`1px solid ${T.border}`, overflow:"hidden" };
 
@@ -28,7 +28,7 @@ export function OneOffsView({ T, state }) {
               <span style={{ flex:1, minWidth:0, fontSize:13, color:T.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{todo.label}</span>
               {todo.day && <span style={{ fontSize:8, letterSpacing:"0.1em", textTransform:"uppercase", color:T.accent, background:T.accentBg, padding:"2px 7px", borderRadius:4, flexShrink:0 }}>{todo.day.slice(0,3)}</span>}
               <GhostBtn onClick={() => setAssigningOneOff(assigningOneOff===todo.id?null:todo.id)} T={T} style={{ fontSize:9, flexShrink:0 }}>{todo.day?"reassign":"+ day"}</GhostBtn>
-              <button onClick={() => setOneOffs(p => p.map(o => o.id===todo.id ? { ...o, done:true } : o))} style={{ background:"transparent", border:"none", color:T.green, fontSize:14, cursor:"pointer", padding:"0 2px", flexShrink:0 }} title="Mark done">✓</button>
+              <button onClick={() => toggleOneOff(todo.id)} style={{ background:"transparent", border:"none", color:T.green, fontSize:14, cursor:"pointer", padding:"0 2px", flexShrink:0 }} title="Mark done">✓</button>
               <button onClick={() => deleteOneOff(todo.id)} style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:12, cursor:"pointer", flexShrink:0 }}>✕</button>
             </div>
             {assigningOneOff === todo.id && (
