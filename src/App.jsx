@@ -26,12 +26,11 @@ export default function App() {
   const greeting = () => { const h = time.getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
   const fmtDate = d => d.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
 
-  const { checked, oneOffs, schedule, ignored, permanentlyIgnored } = state;
+  const { checked, oneOffs, schedule } = state;
   const todayTasks = schedule[["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][(new Date().getDay()||7)-1]] || [];
   const todayOneOffs = oneOffs.filter(t => t.day === ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][(new Date().getDay()||7)-1]);
-  const activeEmails = emails.filter(e => !ignored[e.id] && !permanentlyIgnored.includes(e.id));
-  const totalDone = activeEmails.filter(e => checked[e.id]).length + todayTasks.filter(t => checked[t.id]).length + todayOneOffs.filter(t => t.done).length;
-  const totalCount = activeEmails.length + todayTasks.length + todayOneOffs.length;
+  const totalDone = todayTasks.filter(t => checked[t.id]).length + todayOneOffs.filter(t => t.done).length;
+  const totalCount = todayTasks.length + todayOneOffs.length;
   const progress = totalCount ? Math.round(totalDone / totalCount * 100) : 0;
 
   return (

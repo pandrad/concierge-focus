@@ -9,7 +9,7 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
     backlog, syncLoading, dailyStats, setDailyStats,
     briefOrder,
     onBriefDragStart, onBriefDragOver, onBriefDragEnd,
-    toggleOneOff, addEventAsOneOff, toggleIgnored, confirmBlockEmail,
+    toggleOneOff, addEventAsOneOff, addEmailAsOneOff, toggleIgnored, confirmBlockEmail,
     promoteBacklogToOneOff, dismissBacklog,
     confirmBlock, cancelBlock, applyBlock,
   } = state;
@@ -19,11 +19,10 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
   const todayTasks = schedule[TODAY] || [];
   const todayOneOffs = oneOffs.filter(t => t.day === TODAY);
   const activeEmails = emails.filter(e => !ignored[e.id] && !permanentlyIgnored.includes(e.id));
-  const emailDoneCount = activeEmails.filter(e => checked[e.id]).length;
   const taskDoneCount = todayTasks.filter(t => checked[t.id]).length;
   const oneOffDoneCount = todayOneOffs.filter(t => t.done).length;
-  const totalDone = emailDoneCount + taskDoneCount + oneOffDoneCount;
-  const totalCount = activeEmails.length + todayTasks.length + todayOneOffs.length;
+  const totalDone = taskDoneCount + oneOffDoneCount;
+  const totalCount = todayTasks.length + todayOneOffs.length;
 
   const card = { borderRadius:11, background:T.surface, border:`1px solid ${T.border}`, overflow:"hidden" };
   const sectionLabel = { fontSize:9, color:T.accent, letterSpacing:"0.18em", textTransform:"uppercase", marginBottom:11, display:"block", fontWeight:700 };
@@ -128,7 +127,7 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
       <div style={card}>
         <div style={{ padding:"14px 16px" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:11 }}>
-            <span style={{ ...sectionLabel, marginBottom:0, color:T.urgent }}>✉️ Needs reply · {emailDoneCount}/{activeEmails.length} handled</span>
+            <span style={{ ...sectionLabel, marginBottom:0, color:T.urgent }}>✉️ Needs reply · {activeEmails.length} unread</span>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <span style={{ fontSize:9, color:T.textMuted }}>last 7 days</span>
               {isSignedIn && <button onClick={refetchEmails} style={{ background:"transparent", border:"none", fontSize:11, color:T.textMuted, cursor:"pointer" }}>↻</button>}
@@ -154,28 +153,28 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
           ) : emails.length === 0 ? (
             <div style={{ fontSize:12, color:T.textMuted, padding:"16px 0", textAlign:"center" }}>No unread emails 🎉</div>
           ) : (
-            emails.filter(e => !permanentlyIgnored.includes(e.id)).map(e => (
-              <div key={e.id} style={{ display:"flex", alignItems:"flex-start", gap:8, marginBottom:9, opacity:ignored[e.id]?0.4:1 }}>
-                {!ignored[e.id] && (
-                  <div onClick={() => setChecked(p => ({ ...p, [e.id]:!p[e.id] }))} style={{ width:16, height:16, borderRadius:3, marginTop:2, flexShrink:0, cursor:"pointer", border:`1.5px solid ${checked[e.id]?T.green:T.textMuted}`, background:checked[e.id]?T.green:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    {checked[e.id] && <span style={{ color:"#fff", fontSize:9 }}>✓</span>}
+            emails.filter(e => !permanentlyIgnored.includes(e.id)).map(e => {
+              const emailAdded = oneOffs.some(o => o.label === `Reply: ${e.from} — ${e.subject}` && o.day === TODAY);
+              return (
+                <div key={e.id} style={{ display:"flex", alignItems:"flex-start", gap:8, marginBottom:9, opacity:ignored[e.id]?0.4:1 }}>
+                  <div style={{ flex:1 }}>
+                    <span style={{ fontSize:13, color:T.text, fontWeight:e.urgent?600:400 }}>{e.from}</span>
+                    <span style={{ fontSize:11, color:T.textSub }}> — {e.subject}</span>
+                    <div style={{ fontSize:11, color:T.textMuted, marginTop:1 }}>{e.preview.slice(0,70)}…</div>
                   </div>
-                )}
-                {ignored[e.id] && <div style={{ width:16, flexShrink:0 }} />}
-                <div style={{ flex:1 }}>
-                  <span style={{ fontSize:13, color:T.text, fontWeight:e.urgent?600:400, textDecoration:checked[e.id]?"line-through":"none", opacity:checked[e.id]?0.6:1 }}>{e.from}</span>
-                  <span style={{ fontSize:11, color:T.textSub, textDecoration:checked[e.id]?"line-through":"none", opacity:checked[e.id]?0.6:1 }}> — {e.subject}</span>
-                  <div style={{ fontSize:11, color:T.textMuted, marginTop:1 }}>{e.preview.slice(0,70)}…</div>
-                </div>
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
-                  <span style={{ fontSize:9, color:T.textMuted }}>{e.date}</span>
-                  <div style={{ display:"flex", gap:4 }}>
-                    <button onClick={() => toggleIgnored(e.id)} style={{ fontSize:9, padding:"2px 7px", borderRadius:4, border:`1px solid ${T.border}`, background:"transparent", color:ignored[e.id]?T.textMuted:T.textSub, cursor:"pointer", fontFamily:"inherit" }}>{ignored[e.id] ? "unignore" : "ignore"}</button>
-                    <button onClick={() => confirmBlockEmail(e)} style={{ fontSize:9, padding:"2px 7px", borderRadius:4, border:`1px solid ${T.border}`, background:"transparent", color:T.urgent, cursor:"pointer", fontFamily:"inherit" }} title="Never show this email again">block</button>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
+                    <span style={{ fontSize:9, color:T.textMuted }}>{e.date}</span>
+                    <div style={{ display:"flex", gap:4 }}>
+                      <GhostBtn onClick={() => addEmailAsOneOff(e)} T={T} style={{ fontSize:9, padding:"2px 7px", color:emailAdded?T.green:T.textSub, borderColor:emailAdded?T.green:T.border }}>
+                        {emailAdded ? "✓ added" : "+ task"}
+                      </GhostBtn>
+                      <button onClick={() => toggleIgnored(e.id)} style={{ fontSize:9, padding:"2px 7px", borderRadius:4, border:`1px solid ${T.border}`, background:"transparent", color:ignored[e.id]?T.textMuted:T.textSub, cursor:"pointer", fontFamily:"inherit" }}>{ignored[e.id] ? "unignore" : "ignore"}</button>
+                      <button onClick={() => confirmBlockEmail(e)} style={{ fontSize:9, padding:"2px 7px", borderRadius:4, border:`1px solid ${T.border}`, background:"transparent", color:T.urgent, cursor:"pointer", fontFamily:"inherit" }} title="Never show this email again">block</button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

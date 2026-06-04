@@ -138,6 +138,16 @@ export function useAppState(isSignedIn) {
       setOneOffs(p => [...p, { id:"o"+Date.now(), label:`${event.title} (${event.time})`, day:TODAY, done:false }]);
     }
   };
+  const addEmailAsOneOff = (email) => {
+    const TODAY = DAYS[todayIdx()];
+    const label = `Reply: ${email.from} — ${email.subject}`;
+    const exists = oneOffs.find(o => o.label === label && o.day === TODAY);
+    if (exists) {
+      setOneOffs(p => p.filter(o => o.id !== exists.id));
+    } else {
+      setOneOffs(p => [...p, { id:"o"+Date.now(), label, day:TODAY, done:false }]);
+    }
+  };
 
   // --- Drag: tabs ---
   const onTabDragStart = i => { tabDragIdx.current = i; };
@@ -200,7 +210,7 @@ export function useAppState(isSignedIn) {
     // Task actions
     addTask, deleteTask, moveTask,
     // One-off actions
-    addOneOff, deleteOneOff, assignOneOffDay, toggleOneOff, addEventAsOneOff,
+    addOneOff, deleteOneOff, assignOneOffDay, toggleOneOff, addEventAsOneOff, addEmailAsOneOff,
     // Drag
     onTabDragStart, onTabDragOver, onTabDragEnd,
     onBriefDragStart, onBriefDragOver, onBriefDragEnd,
