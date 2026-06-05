@@ -166,6 +166,14 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 - `visibleEmails` — emails minus permanentlyIgnored (rendered in list)
 - `activeEmails` — emails minus both ignored and permanentlyIgnored (used for header count)
 
+### Google Auth & Session Persistence
+- Token saved to `localStorage` as `gapi_token` with an `expiry` timestamp on every successful login
+- On app load: gapi initialises first, then a single `tokenClient` is created — all restore/refresh/login flows use this same client instance (no parallel init race)
+- If stored token is still valid → restored silently, no login screen
+- If stored token is expired → `prompt: 'none'` silent refresh attempted; if Google rejects it (e.g. user revoked access), falls through to the login screen
+- While signed in: token auto-refreshes 5 minutes before expiry via a `setTimeout`
+- The `callback` on `tokenClient` is set per-request (not at init time) so multiple flows (restore, refresh, manual sign-in) share one client safely
+
 ### Logout Behavior
 - On sign-out: `schedule`, `oneOffs`, `checked`, `ignored` all cleared from React state
 - `permanentlyIgnored` is restored from Drive on next login (it's account-level, not session-level)
