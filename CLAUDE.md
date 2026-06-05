@@ -3,6 +3,8 @@
 ## Project Overview
 Personal productivity dashboard synced to Google account. React + Vite SPA deployed to Vercel.
 
+**Live URL:** https://concierge-focus.vercel.app
+
 **Purpose:** Help Pedro track daily focus (tasks, emails, calendar), one-off tasks, and weekly completion trends.
 
 ## Tech Stack
@@ -104,7 +106,7 @@ src/
 
 **Environment Variable:** `VITE_GOOGLE_CLIENT_ID` (set in .env.local or Vercel dashboard)
 
-**Authorized Origins:** Must include localhost:5173 (dev) and Vercel URL (prod)
+**Authorized Origins:** localhost:5173 (dev) and https://concierge-focus.vercel.app (prod)
 
 ## Development Workflow
 
@@ -127,7 +129,7 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 ### Git Workflow
 - Feature branches not required for small features
 - Commit directly to main when testing locally
-- Push to GitHub, then deploy from Vercel (auto on push)
+- Push to GitHub triggers automatic Vercel redeploy (connected to `pandrad/concierge-focus` repo, `main` branch)
 
 ### Testing
 1. Open localhost:5173
