@@ -4,6 +4,7 @@ export const LIGHT = {
   accent:"#C2410C", accentBg:"rgba(194,65,12,0.08)", accentBorder:"rgba(194,65,12,0.3)",
   green:"#047857", greenBg:"rgba(4,120,87,0.08)", greenBorder:"rgba(4,120,87,0.3)",
   blue:"#0369A1", urgent:"#B91C1C",
+  overdue:"#92400E", overdueBg:"rgba(146,64,14,0.10)",
 };
 
 export const DARK = {
@@ -12,4 +13,5 @@ export const DARK = {
   accent:"#FB923C", accentBg:"rgba(251,146,60,0.13)", accentBorder:"rgba(251,146,60,0.4)",
   green:"#34D399", greenBg:"rgba(52,211,153,0.1)", greenBorder:"rgba(52,211,153,0.35)",
   blue:"#38BDF8", urgent:"#FCA5A5",
+  overdue:"#FCD34D", overdueBg:"rgba(252,211,77,0.13)",
 };

@@ -7,11 +7,10 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
   const {
     schedule, oneOffs, checked, setChecked,
     ignored, permanentlyIgnored,
-    backlog, syncLoading, dailyStats, setDailyStats,
+    syncLoading, dailyStats, setDailyStats,
     briefOrder,
     onBriefDragStart, onBriefDragOver, onBriefDragEnd,
     toggleOneOff, deleteOneOff, addEventAsOneOff, addEmailAsOneOff, toggleIgnored, confirmBlockEmail,
-    promoteBacklogToOneOff, dismissBacklog,
     confirmBlock, cancelBlock, applyBlock,
   } = state;
 
@@ -52,22 +51,6 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
   }, [totalDone, totalCount]);
 
   const sections = {
-    backlog: backlog.length === 0 ? null : (
-      <div style={card}>
-        <div style={{ padding:"14px 16px" }}>
-          <span style={{ ...sectionLabel, color:T.urgent }}>⚠️ Not done yesterday · {backlog.length} task{backlog.length !== 1 ? "s" : ""}</span>
-          {backlog.map(t => (
-            <div key={t.id} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:8 }}>
-              <span style={{ fontSize:11, color:T.textMuted, flexShrink:0 }}>{t.fromDay.slice(0,3)}</span>
-              <span style={{ fontSize:13, color:T.text, flex:1 }}>{t.label}</span>
-              <button onClick={() => promoteBacklogToOneOff(t)} style={{ fontSize:9, padding:"3px 8px", borderRadius:5, border:`1px solid ${T.accentBorder}`, background:T.accentBg, color:T.accent, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>+ one-off</button>
-              <button onClick={() => dismissBacklog(t.id)} style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:13, cursor:"pointer", padding:"0 2px" }}>×</button>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-
     stats: (
       <div style={card}>
         <div style={{ padding:"14px 16px" }}>
@@ -109,11 +92,14 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
               {todayOneOffs.length > 0 && todayTasks.length > 0 && <div style={{ height:1, background:T.border, margin:"10px 0" }} />}
               {todayOneOffs.map(t => (
                 <div key={t.id} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:8 }}>
-                  <div onClick={() => toggleOneOff(t.id)} style={{ width:18, height:18, borderRadius:4, flexShrink:0, cursor:"pointer", border:`1.5px solid ${t.done?T.green:T.textMuted}`, background:t.done?T.green:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <div onClick={() => toggleOneOff(t.id)} style={{ width:18, height:18, borderRadius:4, flexShrink:0, cursor:"pointer", border:`1.5px solid ${t.done?T.green:t.overdue?T.overdue:T.textMuted}`, background:t.done?T.green:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     {t.done && <span style={{ color:"#fff", fontSize:10 }}>✓</span>}
                   </div>
                   <span style={{ fontSize:13, color:t.done?T.textMuted:T.text, textDecoration:t.done?"line-through":"none", flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.label}</span>
-                  <span style={{ fontSize:8, color:T.accent, background:T.accentBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em", flexShrink:0 }}>ONE-OFF</span>
+                  {t.overdue
+                    ? <span style={{ fontSize:8, color:T.overdue, background:T.overdueBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em", flexShrink:0, fontWeight:600 }}>OVERDUE</span>
+                    : <span style={{ fontSize:8, color:T.accent, background:T.accentBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em", flexShrink:0 }}>ONE-OFF</span>
+                  }
                   <button onClick={() => deleteOneOff(t.id)} style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:13, cursor:"pointer", padding:"0 2px", flexShrink:0 }}>×</button>
                 </div>
               ))}

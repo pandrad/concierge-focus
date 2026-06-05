@@ -26,7 +26,10 @@ export function OneOffsView({ T, state }) {
           <div key={todo.id} style={card}>
             <div style={{ padding:"11px 12px", display:"flex", alignItems:"center", gap:9 }}>
               <span style={{ flex:1, minWidth:0, fontSize:13, color:T.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{todo.label}</span>
-              {todo.day && <span style={{ fontSize:8, letterSpacing:"0.1em", textTransform:"uppercase", color:T.accent, background:T.accentBg, padding:"2px 7px", borderRadius:4, flexShrink:0 }}>{todo.day.slice(0,3)}</span>}
+              {todo.overdue
+                ? <span style={{ fontSize:8, letterSpacing:"0.1em", textTransform:"uppercase", color:T.overdue, background:T.overdueBg, padding:"2px 7px", borderRadius:4, flexShrink:0, fontWeight:600 }}>OVERDUE</span>
+                : todo.day && <span style={{ fontSize:8, letterSpacing:"0.1em", textTransform:"uppercase", color:T.accent, background:T.accentBg, padding:"2px 7px", borderRadius:4, flexShrink:0 }}>{todo.day.slice(0,3)}</span>
+              }
               <GhostBtn onClick={() => setAssigningOneOff(assigningOneOff===todo.id?null:todo.id)} T={T} style={{ fontSize:9, flexShrink:0 }}>{todo.day?"reassign":"+ day"}</GhostBtn>
               <button onClick={() => toggleOneOff(todo.id)} style={{ background:"transparent", border:"none", color:T.green, fontSize:14, cursor:"pointer", padding:"0 2px", flexShrink:0 }} title="Mark done">✓</button>
               <button onClick={() => deleteOneOff(todo.id)} style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:12, cursor:"pointer", flexShrink:0 }}>✕</button>

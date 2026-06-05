@@ -25,7 +25,11 @@ export function useAppState(isSignedIn) {
   }));
   const [oneOffs, setOneOffs] = useState(() => loadFromStorage("oneOffs", []));
   const [checked, setChecked] = useState(() => loadFromStorage("checked_" + new Date().toDateString(), {}));
-  const [briefOrder, setBriefOrder] = useState(() => loadFromStorage("briefOrder", ["focus","backlog","stats","emails","calendar"]));
+  const [briefOrder, setBriefOrder] = useState(() => {
+    const stored = loadFromStorage("briefOrder", ["focus","stats","emails","calendar"]);
+    // Remove legacy "backlog" section if present in stored order
+    return stored.filter(s => s !== "backlog");
+  });
   const briefDragIdx = useRef(null);
 
   const [newTask, setNewTask] = useState("");
@@ -34,7 +38,6 @@ export function useAppState(isSignedIn) {
   const [assigningOneOff, setAssigningOneOff] = useState(null);
   const [syncLoading, setSyncLoading] = useState(false);
   const [dailyStats, setDailyStats] = useState(() => loadFromStorage("dailyStats", {}));
-  const [backlog, setBacklog] = useState(() => loadFromStorage("backlog", []));
   const [ignored, setIgnored] = useState(() => loadFromStorage("ignored_" + new Date().toDateString(), {}));
   const [permanentlyIgnored, setPermanentlyIgnored] = useState(() => loadFromStorage("permanentlyIgnored", []));
   const [confirmBlock, setConfirmBlock] = useState(null);
@@ -50,27 +53,46 @@ export function useAppState(isSignedIn) {
   useEffect(() => { saveToStorage("ignored_" + new Date().toDateString(), ignored); }, [ignored]);
   useEffect(() => { saveToStorage("permanentlyIgnored", permanentlyIgnored); }, [permanentlyIgnored]);
   useEffect(() => { saveToStorage("dailyStats", dailyStats); }, [dailyStats]);
-  useEffect(() => { saveToStorage("backlog", backlog); }, [backlog]);
 
-  // Backlog: pick up uncompleted tasks from yesterday on first open of a new day
+  // Overdue carryover: on first open of a new day, inject missed tasks as overdue one-offs
   useEffect(() => {
     const today = new Date().toDateString();
-    const lastOpen = loadFromStorage("lastOpenDate", null);
-    saveToStorage("lastOpenDate", today);
-    if (!lastOpen || lastOpen === today) return;
+    const lastCarryover = loadFromStorage("lastCarryoverDate", null);
+    if (lastCarryover === today) return;
+    saveToStorage("lastCarryoverDate", today);
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toDateString();
-    const yesterdayDayName = DAYS[yesterday.getDay() === 0 ? 6 : yesterday.getDay() - 1];
-    const yesterdayChecked = loadFromStorage("checked_" + yesterdayStr, {});
-    const missed = (schedule[yesterdayDayName] || []).filter(t => !yesterdayChecked[t.id]);
+    const TODAY = DAYS[todayIdx()];
+    const carriedIds = new Set(loadFromStorage("carriedOverIds", []));
+    const toAdd = [];
 
-    if (missed.length > 0) {
-      setBacklog(prev => {
-        const existingIds = new Set(prev.map(b => b.id));
-        return [...prev, ...missed.filter(t => !existingIds.has(t.id)).map(t => ({ id:t.id, label:t.label, fromDay:yesterdayDayName }))];
-      });
+    // 1. Past one-offs assigned to a previous day that were not completed
+    const pastOneOffs = oneOffs.filter(o =>
+      o.day && o.day !== TODAY && !o.done && !o.overdue &&
+      !carriedIds.has("oneoff_" + o.id)
+    );
+    for (const o of pastOneOffs) {
+      carriedIds.add("oneoff_" + o.id);
+      toAdd.push({ id:"od"+Date.now()+Math.random(), label:o.label, day:TODAY, done:false, overdue:true });
+    }
+
+    // 2. Scheduled tasks from past days that were not checked — scan up to 7 days back
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayName = DAYS[d.getDay() === 0 ? 6 : d.getDay() - 1];
+      const dayChecked = loadFromStorage("checked_" + d.toDateString(), {});
+      const missed = (schedule[dayName] || []).filter(t =>
+        !dayChecked[t.id] && !carriedIds.has("sched_" + dayName + "_" + t.id)
+      );
+      for (const t of missed) {
+        carriedIds.add("sched_" + dayName + "_" + t.id);
+        toAdd.push({ id:"od"+Date.now()+Math.random(), label:t.label, day:TODAY, done:false, overdue:true });
+      }
+    }
+
+    if (toAdd.length > 0) {
+      setOneOffs(prev => [...prev, ...toAdd]);
+      saveToStorage("carriedOverIds", [...carriedIds]);
     }
   }, []);
 
@@ -185,13 +207,6 @@ export function useAppState(isSignedIn) {
     setConfirmBlock(null);
   };
 
-  // --- Backlog ---
-  const promoteBacklogToOneOff = (item) => {
-    setOneOffs(p => [...p, { id:"o"+Date.now(), label:item.label, day:null, done:false }]);
-    setBacklog(p => p.filter(b => b.id !== item.id));
-  };
-  const dismissBacklog = (id) => setBacklog(p => p.filter(b => b.id !== id));
-
   return {
     // UI state
     tabs, tabNames, editingTab, editTabName, setEditTabName,
@@ -206,7 +221,7 @@ export function useAppState(isSignedIn) {
     // Data
     schedule, oneOffs, checked, setChecked,
     ignored, permanentlyIgnored,
-    backlog, confirmBlock,
+    confirmBlock,
     // Task actions
     addTask, deleteTask, moveTask,
     // One-off actions
@@ -218,7 +233,5 @@ export function useAppState(isSignedIn) {
     startEditTab, saveTabName,
     // Email actions
     toggleIgnored, confirmBlockEmail, cancelBlock, applyBlock,
-    // Backlog
-    promoteBacklogToOneOff, dismissBacklog,
   };
 }

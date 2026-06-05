@@ -54,8 +54,9 @@ src/
 
 **oneOffs:** Array of tasks assigned to specific days or unassigned
 ```javascript
-[{ id, label, day: 'Monday'|null, done: boolean }]
+[{ id, label, day: 'Monday'|null, done: boolean, overdue?: boolean }]
 ```
+`overdue: true` is set by the carryover logic — never by user action. Overdue tasks are normal one-offs otherwise (completable, deletable).
 
 **checked:** Daily state (resets each day) for task completion checkboxes
 ```javascript
@@ -70,7 +71,7 @@ src/
 ## Features
 
 ### Brief Tab (Dashboard)
-- **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion; one-offs can be deleted directly from this view
+- **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion; one-offs can be deleted directly from this view; overdue tasks appear with an amber OVERDUE badge
 - **Last 7 Days** — Bar chart showing daily task completion percentages (emails excluded from progress)
 - **Needs Reply** — Unread emails (last 7 days); `+ task` button adds a `Reply: from — subject` one-off for today (toggle to remove); emails can be ignored for the day (grayed out, restorable) or blocked permanently (confirmation modal, no undo)
 - **Today's Events** — Calendar events, convertible to one-off tasks with toggle (shows ✓ added, click again to remove)
@@ -154,6 +155,14 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 - No build-time dependencies
 - Entire style system in code (color tokens, responsive)
 - Easy to refactor—can find references with grep
+
+### Overdue carryover
+- Runs once per calendar day on app open, gated by `lastCarryoverDate` in localStorage
+- Scans: (1) one-offs assigned to any past day that are not `done`, (2) scheduled tasks from the past 7 days whose `checked_<date>` entry is missing
+- Injects them as new one-offs with `overdue: true` and `day = today`
+- Dedup via `carriedOverIds` in localStorage — each source task is only carried over once, even across multiple app opens on the same day
+- Does not modify `schedule` — recurring tasks stay in the Week tab unchanged
+- Amber colour tokens: `T.overdue` / `T.overdueBg` in `theme.js`
 
 ### Why separate `checked` and `done` fields?
 - `checked` (daily) — UI state for task checkbox completion, resets each day
