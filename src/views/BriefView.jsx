@@ -17,7 +17,7 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
   const TODAY_IDX = todayIdx();
   const TODAY = DAYS[TODAY_IDX];
   const todayTasks = schedule[TODAY] || [];
-  const todayOneOffs = oneOffs.filter(t => t.day === TODAY);
+  const todayOneOffs = oneOffs.filter(t => t.day === TODAY && !t.done);
   const visibleEmails = emails.filter(e => !permanentlyIgnored.includes(e.id));
   const activeEmails = visibleEmails.filter(e => !ignored[e.id]);
   const taskDoneCount = todayTasks.filter(t => checked[t.id]).length;

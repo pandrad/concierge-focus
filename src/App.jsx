@@ -36,17 +36,29 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:T.bg, color:T.text, fontFamily:"'DM Mono','Courier New',monospace", transition:"background 0.2s,color 0.2s" }}>
-      <div style={{ maxWidth:720, margin:"0 auto", padding:"26px 18px 60px" }}>
+      <style>{`
+        .concierge-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; gap:12px; }
+        .concierge-header-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+        .concierge-tab-label { display:inline; }
+        .concierge-tab-icon { display:none; }
+        @media (max-width:480px) {
+          .concierge-header { flex-direction:column; gap:10px; }
+          .concierge-header-actions { align-self:flex-end; }
+          .concierge-tab-label { display:none; }
+          .concierge-tab-icon { display:inline; }
+        }
+      `}</style>
+      <div style={{ maxWidth:720, margin:"0 auto", padding:"20px 14px 60px" }}>
 
         {/* Header */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
+        <div className="concierge-header">
           <div>
             <div style={{ fontSize:9, letterSpacing:"0.22em", color:T.accent, textTransform:"uppercase", marginBottom:3 }}>My Concierge</div>
-            <h1 style={{ fontSize:23, fontWeight:700, margin:0, letterSpacing:"-0.02em", fontFamily:"'DM Sans',sans-serif", color:T.text }}>{greeting()}, Pedro.</h1>
+            <h1 style={{ fontSize:21, fontWeight:700, margin:0, letterSpacing:"-0.02em", fontFamily:"'DM Sans',sans-serif", color:T.text }}>{greeting()}, Pedro.</h1>
             <div style={{ fontSize:12, color:T.textSub, marginTop:3 }}>{fmtDate(time)}</div>
             {userEmail && <div style={{ fontSize:10, color:T.textMuted, marginTop:2 }}>⚬ {userEmail}</div>}
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div className="concierge-header-actions">
             {isSignedIn && (
               <button onClick={signOut} style={{ fontSize:9, color:T.textMuted, background:"transparent", border:`1px solid ${T.border}`, borderRadius:6, padding:"4px 8px", cursor:"pointer" }}>sign out</button>
             )}
@@ -72,13 +84,16 @@ export default function App() {
               onDragStart={() => onTabDragStart(i)}
               onDragOver={e => onTabDragOver(e, i)}
               onDragEnd={onTabDragEnd}
-              style={{ flex:1, padding:"6px 4px", borderRadius:7, cursor:"grab", fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase", fontFamily:"inherit", userSelect:"none", background:activeTab===tab?T.accent:"transparent", color:activeTab===tab?"#fff":T.textMuted, fontWeight:activeTab===tab?700:400, transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:3 }}
+              style={{ flex:1, padding:"7px 4px", borderRadius:7, cursor:"grab", fontSize:10, letterSpacing:"0.06em", textTransform:"uppercase", fontFamily:"inherit", userSelect:"none", background:activeTab===tab?T.accent:"transparent", color:activeTab===tab?"#fff":T.textMuted, fontWeight:activeTab===tab?700:400, transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:3 }}
             >
               <span style={{ fontSize:9, opacity:0.5 }}>⠿</span>
               {editingTab === tab ? (
-                <input autoFocus value={editTabName} onChange={e => setEditTabName(e.target.value)} onBlur={() => saveTabName(tab)} onKeyDown={e => e.key==="Enter" && saveTabName(tab)} style={{ width:80, background:"transparent", border:"none", color:"inherit", fontSize:"inherit", fontFamily:"inherit", outline:"none", textAlign:"center", textTransform:"inherit" }} />
+                <input autoFocus value={editTabName} onChange={e => setEditTabName(e.target.value)} onBlur={() => saveTabName(tab)} onKeyDown={e => e.key==="Enter" && saveTabName(tab)} style={{ width:60, background:"transparent", border:"none", color:"inherit", fontSize:"inherit", fontFamily:"inherit", outline:"none", textAlign:"center", textTransform:"inherit" }} />
               ) : (
-                <span onClick={() => setActiveTab(tab)} onDoubleClick={() => startEditTab(tab)} style={{ cursor:"pointer" }}>{tabNames[tab]}</span>
+                <span onClick={() => setActiveTab(tab)} onDoubleClick={() => startEditTab(tab)} style={{ cursor:"pointer" }}>
+                  <span className="concierge-tab-label">{tabNames[tab]}</span>
+                  <span className="concierge-tab-icon">{tab === "brief" ? "📋" : tab === "week" ? "📅" : "✦"}</span>
+                </span>
               )}
             </div>
           ))}

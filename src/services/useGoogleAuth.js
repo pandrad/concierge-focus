@@ -34,11 +34,11 @@ export function useGoogleAuth() {
           setIsSignedIn(true);
           setIsLoading(false);
         } else {
-          // Token expired — attempt silent refresh (no consent prompt)
+          // Token expired — attempt silent refresh first, then auto-reauth
           localStorage.removeItem('gapi_token');
-          client.callback = (response) => {
+          const handleRefreshResponse = (response) => {
             if (response.error) {
-              // Silent refresh failed — user must log in manually
+              // Silent refresh rejected — fall through to login screen
               setIsLoading(false);
               return;
             }
@@ -49,6 +49,7 @@ export function useGoogleAuth() {
             setIsSignedIn(true);
             setIsLoading(false);
           };
+          client.callback = handleRefreshResponse;
           client.requestAccessToken({ prompt: 'none' });
         }
       } else {
