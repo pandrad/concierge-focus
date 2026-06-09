@@ -93,6 +93,7 @@ src/
 ### Persistence
 - **Local:** localStorage for UI state (dark mode, tab names, brief order, daily stats)
 - **Cloud:** Google Drive appData — schedule, oneOffs, checked, ignored, permanentlyIgnored (auto-synced, restored on login)
+- **Backup:** Before each Drive save, the previous file is copied to `concierge-focus-data.backup.json`; if the primary file is found empty on load, the backup is restored automatically (expires after 30 days)
 - **Daily:** Completion stats tracked in localStorage, visible in weekly chart
 
 ## Google APIs Setup
