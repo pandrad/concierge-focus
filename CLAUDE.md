@@ -44,7 +44,7 @@ src/
 1. **Authentication** → `services/useGoogleAuth.js` — OAuth2 token flow via Google accounts API, with silent refresh on expiry
 2. **Data Loading** → `services/useGmailData.js`, `services/useCalendarData.js` — Fetch via Google APIs
 3. **Data Persistence** → `services/useGoogleDrive.js` — Save/load schedule + one-offs to Drive
-4. **Business Logic & State** → `hooks/useAppState.js` — all task/email/backlog state and actions
+4. **Business Logic & State** → `hooks/useAppState.js` — all task/email/one-off state and actions
 5. **UI** → `views/` + `components/` — purely presentational, receive state and callbacks as props
 
 ### Key Data Structures
@@ -88,7 +88,7 @@ src/
 ### One-offs Tab
 - Create standalone tasks
 - Assign to specific days; long labels truncate with ellipsis, action buttons always visible
-- Mark complete (hides from One-offs tab, shows crossed out in Today's Focus; click again to restore)
+- Mark complete (hides from both One-offs tab and Today's Focus; click again in One-offs tab to restore)
 
 ### Persistence
 - **Local:** localStorage for UI state (dark mode, tab names, brief order, daily stats)
@@ -158,6 +158,10 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 - Entire style system in code (color tokens, responsive)
 - Easy to refactor—can find references with grep
 
+### Responsiveness
+- Handled via an inline `<style>` tag in `App.jsx` with CSS media queries (no separate CSS files)
+- At ≤480px: header stacks vertically, tab labels are replaced by icons (📋 / 📅 / ✦)
+
 ### Overdue carryover
 - Runs once per calendar day on app open, gated by `lastCarryoverDate` in localStorage
 - Scans: (1) one-offs assigned to any past day that are not `done`, (2) scheduled tasks from the past 7 days whose `checked_<date>` entry is missing
@@ -167,9 +171,8 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 - Amber colour tokens: `T.overdue` / `T.overdueBg` in `theme.js`
 
 ### Why separate `checked` and `done` fields?
-- `checked` (daily) — UI state for task checkbox completion, resets each day
-- `done` (persistent) — One-off completion status that persists across days
-- Allows completed one-offs to stay visible (crossed out) in Today's Focus
+- `checked` (daily) — UI state for task checkbox completion, resets each day; used for recurring scheduled tasks
+- `done` (persistent) — One-off completion status that persists across days; completed one-offs are hidden from both Today's Focus and the One-offs tab
 
 ### Email ignore vs block
 - `ignored` — keyed by date in localStorage + Drive, resets each day, email grays out at 40% opacity with "unignore" button
