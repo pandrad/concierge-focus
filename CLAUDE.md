@@ -73,7 +73,7 @@ src/
 ## Features
 
 ### Brief Tab (Dashboard)
-- **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion; completed one-offs stay visible with a crossed-out (line-through) style and can be unticked; one-offs can be deleted directly from this view; overdue tasks appear with an amber OVERDUE badge
+- **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion; completed one-offs stay visible with a crossed-out (line-through) style and can be unticked; the `×` on a regular one-off unassigns it from today (returns it to the unassigned pool in the One-offs tab) rather than deleting it — only OVERDUE one-offs (auto-generated carryover copies) are deleted by `×`; overdue tasks appear with an amber OVERDUE badge
 - **Last 7 Days** — Bar chart showing daily task completion percentages (emails excluded from progress)
 - **Needs Reply** — Unread emails (last 7 days); `+ task` button adds a `Reply: from — subject` one-off for today (toggle to remove); emails can be ignored for the day (grayed out, restorable) or blocked permanently (confirmation modal, no undo)
 - **Today's Events** — Calendar events, convertible to one-off tasks with toggle (shows ✓ added, click again to remove)
@@ -131,6 +131,7 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 - Feature branches not required for small features
 - Commit directly to main when testing locally
 - Push to GitHub triggers automatic Vercel redeploy (connected to `pandrad/concierge-focus` repo, `main` branch)
+- **Never push to GitHub unless Pedro explicitly says so** — commits can be made locally, but `git push` requires explicit confirmation each time
 
 ### Testing
 1. Open localhost:5173

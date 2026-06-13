@@ -10,7 +10,7 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
     syncLoading, dailyStats, setDailyStats,
     briefOrder,
     onBriefDragStart, onBriefDragOver, onBriefDragEnd,
-    toggleOneOff, deleteOneOff, addEventAsOneOff, addEmailAsOneOff, toggleIgnored, confirmBlockEmail,
+    toggleOneOff, deleteOneOff, assignOneOffDay, addEventAsOneOff, addEmailAsOneOff, toggleIgnored, confirmBlockEmail,
     confirmBlock, cancelBlock, applyBlock,
   } = state;
 
@@ -100,7 +100,7 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
                     ? <span style={{ fontSize:8, color:T.overdue, background:T.overdueBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em", flexShrink:0, fontWeight:600 }}>OVERDUE</span>
                     : <span style={{ fontSize:8, color:T.accent, background:T.accentBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em", flexShrink:0 }}>ONE-OFF</span>
                   }
-                  <button onClick={() => deleteOneOff(t.id)} style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:13, cursor:"pointer", padding:"0 2px", flexShrink:0 }}>×</button>
+                  <button onClick={() => t.overdue ? deleteOneOff(t.id) : assignOneOffDay(t.id, null)} title={t.overdue ? "Delete" : "Remove from today (back to One-offs)"} style={{ background:"transparent", border:"none", color:T.textMuted, fontSize:13, cursor:"pointer", padding:"0 2px", flexShrink:0 }}>×</button>
                 </div>
               ))}
             </>
