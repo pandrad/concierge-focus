@@ -163,6 +163,9 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 - Handled via an inline `<style>` tag in `App.jsx` with CSS media queries (no separate CSS files)
 - At ≤480px: header stacks vertically, tab labels are replaced by icons (📋 / 📅 / ✦)
 
+### Today's Focus text wrapping
+- Task/one-off labels in the Today's Focus section use `minWidth:0` + `wordBreak:"break-word"` on their flex item so long labels wrap onto multiple lines instead of overflowing the card or being truncated with an ellipsis
+
 ### Overdue carryover
 - Runs once per calendar day on app open, gated by `lastCarryoverDate` in localStorage
 - Scans: (1) one-offs assigned to any past day that are not `done`, (2) scheduled tasks from the past 7 days whose `checked_<date>` entry is missing
