@@ -73,7 +73,7 @@ src/
 ## Features
 
 ### Brief Tab (Dashboard)
-- **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion; one-offs can be deleted directly from this view; overdue tasks appear with an amber OVERDUE badge
+- **Today's Focus** — Schedule tasks + one-offs for today with checkbox completion; completed one-offs stay visible with a crossed-out (line-through) style and can be unticked; one-offs can be deleted directly from this view; overdue tasks appear with an amber OVERDUE badge
 - **Last 7 Days** — Bar chart showing daily task completion percentages (emails excluded from progress)
 - **Needs Reply** — Unread emails (last 7 days); `+ task` button adds a `Reply: from — subject` one-off for today (toggle to remove); emails can be ignored for the day (grayed out, restorable) or blocked permanently (confirmation modal, no undo)
 - **Today's Events** — Calendar events, convertible to one-off tasks with toggle (shows ✓ added, click again to remove)
@@ -87,8 +87,8 @@ src/
 
 ### One-offs Tab
 - Create standalone tasks
-- Assign to specific days; long labels truncate with ellipsis, action buttons always visible
-- Mark complete (hides from both One-offs tab and Today's Focus; click again in One-offs tab to restore)
+- Assign to specific days; long labels wrap onto multiple lines, action buttons always visible
+- Mark complete (hides from the One-offs tab; stays visible crossed-out in Today's Focus until the day ends; click again in either view to restore)
 
 ### Persistence
 - **Local:** localStorage for UI state (dark mode, tab names, brief order, daily stats)
@@ -176,7 +176,7 @@ The dev server runs automatically on login via a macOS LaunchAgent. No manual `n
 
 ### Why separate `checked` and `done` fields?
 - `checked` (daily) — UI state for task checkbox completion, resets each day; used for recurring scheduled tasks
-- `done` (persistent) — One-off completion status that persists across days; completed one-offs are hidden from both Today's Focus and the One-offs tab
+- `done` (persistent) — One-off completion status that persists across days; completed one-offs are hidden from the One-offs tab but remain visible (crossed-out) in Today's Focus for the rest of the day
 
 ### Email ignore vs block
 - `ignored` — keyed by date in localStorage + Drive, resets each day, email grays out at 40% opacity with "unignore" button
