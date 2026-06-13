@@ -96,7 +96,8 @@ export function useAppState(isSignedIn) {
     }
   }, []);
 
-  // Drive: load on sign-in, clear on sign-out
+  // Drive: load on sign-in, clear on sign-out (not on initial auth restore check)
+  const wasSignedIn = useRef(isSignedIn);
   useEffect(() => {
     if (isSignedIn) {
       setSyncLoading(true);
@@ -110,12 +111,13 @@ export function useAppState(isSignedIn) {
         }
         setSyncLoading(false);
       });
-    } else {
+    } else if (wasSignedIn.current) {
       setChecked({});
       setIgnored({});
       setSchedule({ Monday:[], Tuesday:[], Wednesday:[], Thursday:[], Friday:[], Saturday:[], Sunday:[] });
       setOneOffs([]);
     }
+    wasSignedIn.current = isSignedIn;
   }, [isSignedIn, loadData]);
 
   // Drive: save on any state change (debounced)
