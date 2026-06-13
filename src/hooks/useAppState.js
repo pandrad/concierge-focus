@@ -144,6 +144,26 @@ export function useAppState(isSignedIn, authLoading) {
     return () => clearTimeout(timer);
   }, [isSignedIn, schedule, oneOffs, checked, ignored, permanentlyIgnored, saveData]);
 
+  // Flush any pending save immediately when the page is hidden/backgrounded —
+  // mobile browsers often suspend/reload a tab on switch, which would otherwise
+  // race with the debounced save above and lose the last second of changes
+  const latestData = useRef({ schedule, oneOffs, checked, ignored, permanentlyIgnored });
+  latestData.current = { schedule, oneOffs, checked, ignored, permanentlyIgnored };
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const flush = () => {
+      const { schedule, oneOffs, checked, ignored, permanentlyIgnored } = latestData.current;
+      saveData(schedule, oneOffs, checked, ignored, permanentlyIgnored);
+    };
+    const onVisibilityChange = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, [isSignedIn, saveData]);
+
   // --- Task management ---
   const addTask = (day) => {
     if (!newTask.trim()) return;
