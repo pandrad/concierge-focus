@@ -20,7 +20,7 @@ export default function App() {
   const { emails, userEmail, loading: emailLoading, error: emailError, refetch: refetchEmails } = useGmailData(isSignedIn, 'week');
   const { events, loading: calLoading, error: calError, refetch: refetchCal } = useCalendarData(isSignedIn);
 
-  const state = useAppState(isSignedIn);
+  const state = useAppState(isSignedIn, authLoading);
   const { tabs, tabNames, editingTab, editTabName, setEditTabName, activeTab, setActiveTab, onTabDragStart, onTabDragOver, onTabDragEnd, startEditTab, saveTabName } = state;
 
   const greeting = () => { const h = time.getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };

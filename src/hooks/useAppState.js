@@ -11,7 +11,7 @@ export const loadFromStorage = (key, fallback) => {
 };
 export const saveToStorage = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
 
-export function useAppState(isSignedIn) {
+export function useAppState(isSignedIn, authLoading) {
   const [tabs, setTabs] = useState(() => loadFromStorage("tabs", ["brief","week","one-offs"]));
   const [tabNames, setTabNames] = useState(() => loadFromStorage("tabNames", { brief:"📋 Brief", week:"Week", "one-offs":"One-offs" }));
   const [editingTab, setEditingTab] = useState(null);
@@ -54,11 +54,17 @@ export function useAppState(isSignedIn) {
   useEffect(() => { saveToStorage("permanentlyIgnored", permanentlyIgnored); }, [permanentlyIgnored]);
   useEffect(() => { saveToStorage("dailyStats", dailyStats); }, [dailyStats]);
 
-  // Overdue carryover: on first open of a new day, inject missed tasks as overdue one-offs
-  useEffect(() => {
+  // Overdue carryover: on first open of a new day, inject missed tasks as overdue one-offs.
+  // Applied once the data source (Drive or local) has settled, so it can't be clobbered
+  // by a Drive load that resolves afterwards.
+  const carryoverDone = useRef(false);
+  const applyCarryover = (currentOneOffs, currentSchedule) => {
+    if (carryoverDone.current) return currentOneOffs;
+    carryoverDone.current = true;
+
     const today = new Date().toDateString();
     const lastCarryover = loadFromStorage("lastCarryoverDate", null);
-    if (lastCarryover === today) return;
+    if (lastCarryover === today) return currentOneOffs;
     saveToStorage("lastCarryoverDate", today);
 
     const TODAY = DAYS[todayIdx()];
@@ -66,7 +72,7 @@ export function useAppState(isSignedIn) {
     const toAdd = [];
 
     // 1. Past one-offs assigned to a previous day that were not completed
-    const pastOneOffs = oneOffs.filter(o =>
+    const pastOneOffs = currentOneOffs.filter(o =>
       o.day && o.day !== TODAY && !o.done && !o.overdue &&
       !carriedIds.has("oneoff_" + o.id)
     );
@@ -81,7 +87,7 @@ export function useAppState(isSignedIn) {
       d.setDate(d.getDate() - i);
       const dayName = DAYS[d.getDay() === 0 ? 6 : d.getDay() - 1];
       const dayChecked = loadFromStorage("checked_" + d.toDateString(), {});
-      const missed = (schedule[dayName] || []).filter(t =>
+      const missed = (currentSchedule[dayName] || []).filter(t =>
         !dayChecked[t.id] && !carriedIds.has("sched_" + dayName + "_" + t.id)
       );
       for (const t of missed) {
@@ -91,10 +97,17 @@ export function useAppState(isSignedIn) {
     }
 
     if (toAdd.length > 0) {
-      setOneOffs(prev => [...prev, ...toAdd]);
       saveToStorage("carriedOverIds", [...carriedIds]);
+      return [...currentOneOffs, ...toAdd];
     }
-  }, []);
+    return currentOneOffs;
+  };
+
+  // Not signing in (no credentials, or silent refresh failed): apply carryover to local data
+  useEffect(() => {
+    if (authLoading || isSignedIn) return;
+    setOneOffs(prev => applyCarryover(prev, schedule));
+  }, [authLoading, isSignedIn]);
 
   // Drive: load on sign-in, clear on sign-out (not on initial auth restore check)
   const wasSignedIn = useRef(isSignedIn);
@@ -103,11 +116,15 @@ export function useAppState(isSignedIn) {
       setSyncLoading(true);
       loadData().then(result => {
         if (result.success && result.data) {
-          setSchedule(result.data.schedule);
-          setOneOffs(result.data.oneOffs);
+          const loadedOneOffs = result.data.oneOffs || [];
+          const loadedSchedule = result.data.schedule || schedule;
+          setSchedule(loadedSchedule);
+          setOneOffs(applyCarryover(loadedOneOffs, loadedSchedule));
           if (result.data.checked) setChecked(result.data.checked);
           if (result.data.ignored) setIgnored(result.data.ignored);
           if (result.data.permanentlyIgnored) setPermanentlyIgnored(result.data.permanentlyIgnored);
+        } else {
+          setOneOffs(prev => applyCarryover(prev, schedule));
         }
         setSyncLoading(false);
       });
