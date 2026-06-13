@@ -86,7 +86,7 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
                   <div onClick={() => setChecked(p => ({ ...p, [t.id]:!p[t.id] }))} style={{ width:18, height:18, borderRadius:4, flexShrink:0, cursor:"pointer", border:`1.5px solid ${checked[t.id]?T.green:T.textMuted}`, background:checked[t.id]?T.green:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     {checked[t.id] && <span style={{ color:"#fff", fontSize:10 }}>✓</span>}
                   </div>
-                  <span style={{ fontSize:13, color:checked[t.id]?T.textMuted:T.text, textDecoration:checked[t.id]?"line-through":"none", flex:1 }}>{t.label}</span>
+                  <span style={{ fontSize:13, color:checked[t.id]?T.textMuted:T.text, textDecoration:checked[t.id]?"line-through":"none", flex:1, minWidth:0, wordBreak:"break-word" }}>{t.label}</span>
                 </div>
               ))}
               {todayOneOffs.length > 0 && todayTasks.length > 0 && <div style={{ height:1, background:T.border, margin:"10px 0" }} />}
@@ -95,7 +95,7 @@ export function BriefView({ T, state, emails, events, emailLoading, emailError, 
                   <div onClick={() => toggleOneOff(t.id)} style={{ width:18, height:18, borderRadius:4, flexShrink:0, cursor:"pointer", border:`1.5px solid ${t.done?T.green:t.overdue?T.overdue:T.textMuted}`, background:t.done?T.green:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     {t.done && <span style={{ color:"#fff", fontSize:10 }}>✓</span>}
                   </div>
-                  <span style={{ fontSize:13, color:t.done?T.textMuted:T.text, textDecoration:t.done?"line-through":"none", flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.label}</span>
+                  <span style={{ fontSize:13, color:t.done?T.textMuted:T.text, textDecoration:t.done?"line-through":"none", flex:1, minWidth:0, wordBreak:"break-word" }}>{t.label}</span>
                   {t.overdue
                     ? <span style={{ fontSize:8, color:T.overdue, background:T.overdueBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em", flexShrink:0, fontWeight:600 }}>OVERDUE</span>
                     : <span style={{ fontSize:8, color:T.accent, background:T.accentBg, padding:"2px 6px", borderRadius:4, letterSpacing:"0.08em", flexShrink:0 }}>ONE-OFF</span>
